@@ -1,6 +1,12 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useProjects } from '../contexts/ProjectContext'
-import { X, Github, Globe, Server } from 'lucide-react'
+import { X, Github, Globe, Server, Sparkles, Loader2, GitBranch, Settings, Rocket } from 'lucide-react'
+import githubService from '../services/githubService'
+import cloudProviderService from '../services/cloudProviderService'
+import aiService from '../services/aiService'
+import { Button } from './ui/Button'
+import { Input } from './ui/Input'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/Card'
 
 const CreateProjectModal = ({ isOpen, onClose }) => {
   const { createProject } = useProjects()
@@ -12,13 +18,59 @@ const CreateProjectModal = ({ isOpen, onClose }) => {
     buildCommand: 'npm run build',
     startCommand: 'npm start'
   })
+  const [aiConfig, setAiConfig] = useState(null)
+  const [loadingAiConfig, setLoadingAiConfig] = useState(false)
+  const [repositories, setRepositories] = useState([])
+  const [loadingRepos, setLoadingRepos] = useState(false)
+  const [step, setStep] = useState(1) // 1: Repository, 2: Configuration, 3: Review
 
-  const cloudProviders = [
-    { id: 'vercel', name: 'Vercel', icon: Globe },
-    { id: 'aws', name: 'AWS', icon: Server },
-    { id: 'netlify', name: 'Netlify', icon: Globe },
-    { id: 'digital-ocean', name: 'DigitalOcean', icon: Server }
-  ]
+  const cloudProviders = cloudProviderService.getProviders()
+
+  // Generate AI configuration when repository URL changes
+  useEffect(() => {
+    if (formData.repoUrl && formData.repoUrl.includes('github.com')) {
+      generateAiConfiguration()
+    }
+  }, [formData.repoUrl])
+
+  const generateAiConfiguration = async () => {
+    setLoadingAiConfig(true)
+    try {
+      // Extract repo info from URL
+      const repoMatch = formData.repoUrl.match(/github\.com\/([^\/]+)\/([^\/]+)/)
+      if (!repoMatch) return
+
+      const [, owner, repo] = repoMatch
+      
+      // Mock repository analysis (in real app, this would fetch from GitHub API)
+      const repoInfo = {
+        name: repo,
+        owner,
+        description: 'Sample repository',
+        language: 'JavaScript',
+        size: 1024,
+        hasPackageJson: true,
+        hasDockerfile: false,
+        mainFiles: ['package.json', 'src/index.js', 'public/index.html']
+      }
+
+      const config = await aiService.generateDeploymentConfig(repoInfo)
+      setAiConfig(config)
+      
+      // Auto-fill form with AI suggestions
+      setFormData(prev => ({
+        ...prev,
+        cloudProvider: config.provider,
+        buildCommand: config.buildCommand,
+        startCommand: config.startCommand,
+        appName: prev.appName || repo
+      }))
+    } catch (error) {
+      console.error('Failed to generate AI configuration:', error)
+    } finally {
+      setLoadingAiConfig(false)
+    }
+  }
 
   const handleSubmit = (e) => {
     e.preventDefault()
