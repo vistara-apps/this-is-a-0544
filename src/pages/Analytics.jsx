@@ -1,4 +1,6 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
+import { useProjects } from '../contexts/ProjectContext'
+import aiService from '../services/aiService'
 import { 
   TrendingUp, 
   TrendingDown,
@@ -7,11 +9,53 @@ import {
   Clock,
   DollarSign,
   Server,
-  Zap
+  Zap,
+  Lightbulb,
+  CheckCircle,
+  AlertTriangle,
+  ArrowRight,
+  BarChart3,
+  PieChart
 } from 'lucide-react'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/Card'
+import { Button } from '../components/ui/Button'
 
 const Analytics = () => {
   const [timeRange, setTimeRange] = useState('7d')
+  const [optimizations, setOptimizations] = useState([])
+  const [loadingOptimizations, setLoadingOptimizations] = useState(false)
+  const { projects, deployments } = useProjects()
+
+  // Load cost optimizations on component mount
+  useEffect(() => {
+    loadCostOptimizations()
+  }, [])
+
+  const loadCostOptimizations = async () => {
+    setLoadingOptimizations(true)
+    try {
+      // Mock deployment data for AI analysis
+      const deploymentData = {
+        provider: 'vercel',
+        instanceType: 'hobby',
+        monthlyCost: 24.50,
+        cpuUsage: 25,
+        memoryUsage: 35,
+        monthlyTraffic: 124800,
+        storageUsage: 2.5,
+        avgResponseTime: 180,
+        uptime: 99.9,
+        errorRate: 0.1
+      }
+
+      const recommendations = await aiService.generateCostOptimizations(deploymentData)
+      setOptimizations(recommendations)
+    } catch (error) {
+      console.error('Failed to load optimizations:', error)
+    } finally {
+      setLoadingOptimizations(false)
+    }
+  }
 
   const metrics = [
     {
@@ -202,40 +246,116 @@ const Analytics = () => {
         </div>
       </div>
 
-      {/* Cost Optimization */}
-      <div className="card p-6">
-        <h2 className="text-xl font-semibold text-white mb-6">Cost Optimization Recommendations</h2>
-        
-        <div className="space-y-4">
-          {costOptimizations.map((optimization, index) => (
-            <div key={index} className="p-4 rounded-lg bg-dark-bg border border-gray-700">
-              <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between">
-                <div className="flex-1">
-                  <div className="flex items-center space-x-3 mb-2">
-                    <DollarSign className="h-5 w-5 text-accent" />
-                    <h3 className="text-lg font-semibold text-white">{optimization.title}</h3>
-                    <span className={`px-2 py-1 rounded-md text-xs font-medium ${
-                      optimization.impact === 'No Risk' ? 'bg-accent/20 text-accent' :
-                      optimization.impact === 'Low Risk' ? 'bg-yellow-500/20 text-yellow-500' :
-                      'bg-red-500/20 text-red-500'
-                    }`}>
-                      {optimization.impact}
-                    </span>
-                  </div>
-                  <p className="text-gray-400 mb-2">{optimization.description}</p>
-                  <p className="text-accent font-semibold">Potential savings: {optimization.savings}</p>
-                </div>
-                
-                <div className="mt-4 lg:mt-0 lg:ml-6">
-                  <button className="btn-primary">
-                    Apply Optimization
-                  </button>
-                </div>
-              </div>
+      {/* AI-Powered Cost Optimization */}
+      <Card className="bg-dark-bg border-gray-700">
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <Lightbulb className="h-6 w-6 text-accent" />
+              <CardTitle className="text-white">AI Cost Optimization</CardTitle>
             </div>
-          ))}
-        </div>
-      </div>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={loadCostOptimizations}
+              loading={loadingOptimizations}
+            >
+              Refresh Analysis
+            </Button>
+          </div>
+          <CardDescription className="text-gray-400">
+            AI-powered recommendations to reduce your cloud costs while maintaining performance
+          </CardDescription>
+        </CardHeader>
+        
+        <CardContent>
+          {loadingOptimizations ? (
+            <div className="flex items-center justify-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-accent"></div>
+              <span className="ml-3 text-gray-400">Analyzing your deployment...</span>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {optimizations.length === 0 ? (
+                <div className="text-center py-8">
+                  <CheckCircle className="h-12 w-12 text-accent mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold text-white mb-2">All Optimized!</h3>
+                  <p className="text-gray-400">Your deployment is already well-optimized for cost efficiency.</p>
+                </div>
+              ) : (
+                optimizations.map((optimization) => (
+                  <Card key={optimization.id} className="bg-gray-800 border-gray-600">
+                    <CardContent className="p-4">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center space-x-3 mb-2">
+                            <div className={`p-1 rounded-full ${
+                              optimization.priority === 'high' ? 'bg-red-500/20' :
+                              optimization.priority === 'medium' ? 'bg-yellow-500/20' :
+                              'bg-green-500/20'
+                            }`}>
+                              {optimization.priority === 'high' ? (
+                                <AlertTriangle className="h-4 w-4 text-red-500" />
+                              ) : optimization.priority === 'medium' ? (
+                                <Clock className="h-4 w-4 text-yellow-500" />
+                              ) : (
+                                <CheckCircle className="h-4 w-4 text-green-500" />
+                              )}
+                            </div>
+                            <h3 className="text-lg font-semibold text-white">{optimization.title}</h3>
+                            <span className={`px-2 py-1 rounded-md text-xs font-medium ${
+                              optimization.priority === 'high' ? 'bg-red-500/20 text-red-400' :
+                              optimization.priority === 'medium' ? 'bg-yellow-500/20 text-yellow-400' :
+                              'bg-green-500/20 text-green-400'
+                            }`}>
+                              {optimization.priority.toUpperCase()} PRIORITY
+                            </span>
+                          </div>
+                          
+                          <p className="text-gray-400 mb-3">{optimization.description}</p>
+                          
+                          <div className="flex items-center space-x-4 mb-3">
+                            <div className="flex items-center space-x-1">
+                              <DollarSign className="h-4 w-4 text-accent" />
+                              <span className="text-accent font-semibold">{optimization.estimatedSavings}</span>
+                            </div>
+                            <div className="flex items-center space-x-1">
+                              <BarChart3 className="h-4 w-4 text-gray-400" />
+                              <span className="text-gray-400 text-sm">{optimization.category}</span>
+                            </div>
+                          </div>
+                          
+                          {optimization.implementationSteps && optimization.implementationSteps.length > 0 && (
+                            <details className="mt-3">
+                              <summary className="text-sm text-gray-400 cursor-pointer hover:text-white">
+                                Implementation Steps
+                              </summary>
+                              <ul className="mt-2 space-y-1 text-sm text-gray-500">
+                                {optimization.implementationSteps.map((step, index) => (
+                                  <li key={index} className="flex items-center space-x-2">
+                                    <ArrowRight className="h-3 w-3" />
+                                    <span>{step}</span>
+                                  </li>
+                                ))}
+                              </ul>
+                            </details>
+                          )}
+                        </div>
+                        
+                        <div className="ml-4">
+                          <Button size="sm" className="whitespace-nowrap">
+                            Apply Fix
+                          </Button>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   )
 }
